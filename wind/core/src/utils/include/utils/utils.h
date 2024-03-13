@@ -3,6 +3,8 @@
 
 namespace wind {
 
+using uint = unsigned int;
+
 namespace chrono = std::chrono;
 
 template <typename C, typename T>
