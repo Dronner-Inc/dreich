@@ -1,0 +1,21 @@
+name: UI lint
+description: UI lint
+
+inputs:
+  rootPath:
+    description: Path to project root
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup base UI
+      uses: ./.github/workflows/modules/ui/base-setup
+
+    - uses: ./.github/workflows/modules/ui/install-dependencies
+      with:
+        rootPath: ${{ inputs.rootPath }}
+
+    - name: Lint
+      shell: bash
+      run: cd ${{ inputs.rootPath }} && pnpm lint:fix

@@ -1,0 +1,13 @@
+name: Engine lint
+description: Engine lint
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: DoozyX/clang-format-lint-action@v0.17
+      with:
+        source: '.'
+        exclude: './game/assets'
+        extensions: 'h,cpp'
+        clangFormatVersion: 17
+        inplace: true

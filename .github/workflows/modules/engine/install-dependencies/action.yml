@@ -1,0 +1,142 @@
+name: Install engine dependencies
+description: Install engine dependencies
+
+inputs:
+  buildSettings:
+    description: Conan settings
+    default: build_type=Debug
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup conan cache
+      uses: ./.github/workflows/utils/cache/get-conan-cache
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        export CC=clang
+        export CXX=clang++
+        conan install . --update --build=missing
+
+    - name: Install Linux staff
+      run:   |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          # conan profile show
+          sudo apt update
+          sudo apt install p7zip-full
+
+          cd ../
+          mkdir ultralight
+          cd ultralight
+
+          wget https://ultralight-files.sfo3.cdn.digitaloceanspaces.com/ultralight-sdk-1.3.0-linux-x64.7z
+          7za x ultralight-sdk-1.3.0-linux-x64.7z
+          echo "ULTRALIGHT_PATH=$(pwd)" >> $GITHUB_ENV
+          echo "DOTNET_PATH=/usr/share/dotnet" >> $GITHUB_ENV
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          echo Windows
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          # conan profile show
+          brew install p7zip
+
+          cd ../
+          mkdir ultralight
+          cd ultralight
+
+          wget https://ultralight-files.sfo3.cdn.digitaloceanspaces.com/ultralight-sdk-1.4.0a-mac-arm64.7z
+          7za x ultralight-sdk-1.4.0a-mac-arm64.7z
+
+          echo -e "#include <Ultralight/String.h>\n$(cat SDK/include/Ultralight/ConsoleMessage.h )" > SDK/include/Ultralight/ConsoleMessage.h
+
+          echo "ULTRALIGHT_PATH=$(pwd)/SDK" >> $GITHUB_ENV
+          echo "DOTNET_PATH=/Users/runner/.dotnet" >> $GITHUB_ENV
+        else
+          echo "$RUNNER_OS not supported"
+          exit 1
+        fi
+      shell: bash
+
+    - name: Install Linux staff
+      run:   |
+        if [ "$RUNNER_OS" == "Linux" ]; then
+          touch CMakeEnv.txt
+          echo 'set(ENV{ULTRALIGHT_PATH} ${{ env.ULTRALIGHT_PATH }})' >> CMakeEnv.txt
+          echo 'set(ENV{DOTNET_ROOT} ${{ env.DOTNET_PATH }})' >> CMakeEnv.txt
+          echo 'set(ENV{DOTNET_INCLUDES} "${{ env.DOTNET_PATH }}/packs/Microsoft.NETCore.App.Host.linux-x64/8.0.3/runtimes/linux-x64/native")' >> CMakeEnv.txt
+
+          cat CMakeEnv.txt
+
+          sudo apt install clang
+          sudo apt-get install build-essential
+          sudo apt-get install cmake
+          sudo apt-get install make
+          which make
+
+          export CC=clang
+          export CXX=clang++
+
+          cmake -DCMAKE_MAKE_PROGRAM=/usr/bin/make -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug
+          cmake --build $(pwd)/build/Debug --parallel 10 --target wind-asset-bundler
+
+          echo start
+          cd build/Debug/wind
+          ls -a
+          sudo make install
+          wind-asset-bundler -h
+          cd ../../game/assets
+          wind-asset-bundler --build ../.cache/
+          cd ../../
+          echo end
+
+          # cmake -B build
+          # cmake -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug --config Debug --target game
+          # cmake -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug -G "Unix Makefiles"
+          # cmake --build $(pwd)/build/Debug --parallel 10 --target game
+          cmake -DCMAKE_MAKE_PROGRAM=/usr/bin/make -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug
+          cmake --build $(pwd)/build/Debug --parallel 10 --target game
+        elif [ "$RUNNER_OS" == "Windows" ]; then
+          echo Windows
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+          touch CMakeEnv.txt
+          echo 'set(ENV{ULTRALIGHT_PATH} "${{ env.ULTRALIGHT_PATH }}")' >> CMakeEnv.txt
+          echo 'set(ENV{DOTNET_ROOT} "${{ env.DOTNET_PATH }}")' >> CMakeEnv.txt
+          echo 'set(ENV{DOTNET_INCLUDES} "${{ env.DOTNET_PATH }}/packs/Microsoft.NETCore.App.Host.osx-arm64/8.0.3/runtimes/osx-arm64/native")' >> CMakeEnv.txt
+
+          cat CMakeEnv.txt
+
+          brew install llvm
+          brew install cmake
+          brew install make
+          which make
+
+          /opt/homebrew/bin/cmake -DCMAKE_MAKE_PROGRAM=/usr/bin/make -G "Unix Makefiles" -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug
+          /opt/homebrew/bin/cmake --build $(pwd)/build/Debug --parallel 10 --target wind-asset-bundler
+
+          echo start
+          cd build/Debug/wind/asset-pipeline
+          ls -a
+          sudo make install
+          wind-asset-bundler -h
+          cd ../../../../game/assets
+          wind-asset-bundler --build ../.cache/
+          cd ../../
+          echo end
+
+          # cmake -B build
+          # cmake -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug --config Debug --target game
+          # cmake -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug -G "Unix Makefiles"
+          # cmake --build $(pwd)/build/Debug --parallel 10 --target game
+          /opt/homebrew/bin/cmake -DCMAKE_MAKE_PROGRAM=/usr/bin/make -G "Unix Makefiles" -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=$(pwd)/build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug
+          /opt/homebrew/bin/cmake --build $(pwd)/build/Debug --parallel 10 --target game
+        else
+          echo "$RUNNER_OS not supported"
+          exit 1
+        fi
+      shell: bash
+          # which dotnet
+
+          # ls -a
+          # pwd
+          # cmake -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=build/Debug/generators/conan_toolchain.cmake -S$(pwd) -B$(pwd)/build/Debug -G "Unix Makefiles"
+          # cmake --build .

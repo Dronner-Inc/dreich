@@ -19,8 +19,8 @@
 #include <window/window.h>
 
 int main(int argc, char** argv) {
+
 #ifndef NDEBUG
-#define SPDLOG
   spdlog::set_level(spdlog::level::debug);
   spdlog::info("----Debug configuration!----");
 #endif
